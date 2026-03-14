@@ -1,14 +1,129 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { GraduationCap, Calendar, BookOpen } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ExamType, EXAM_TYPES } from "@/types/exam";
+import { getActiveSemester, getExamSheetsBySemester } from "@/lib/store";
+import { useSelectedCourses } from "@/hooks/use-selected-courses";
+import { useDataRefresh } from "@/hooks/use-store-subscription";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
+import ExamScheduleSection from "@/components/student/ExamScheduleSection";
+import TimetableView from "@/components/student/TimetableView";
+import { motion } from "framer-motion";
 
-const Index = () => {
+export default function Index() {
+  useDataRefresh();
+  const activeSemester = getActiveSemester();
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background flex flex-col">
+      <Header />
+      <main className="flex-1">
+        {/* Hero */}
+        <section className="bg-primary text-primary-foreground py-12 sm:py-16 print-hidden">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mx-auto max-w-5xl px-4 text-center"
+          >
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary-foreground/10 px-3 py-1 text-sm mb-4">
+              <GraduationCap className="h-4 w-4" />
+              ExamDesk
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">
+              Your Personal Exam Timetable
+            </h1>
+            <p className="text-primary-foreground/70 max-w-lg mx-auto">
+              Select your courses, view your personalized schedule, detect time clashes, and download PDFs.
+            </p>
+          </motion.div>
+        </section>
+
+        {/* Content */}
+        <div className="mx-auto max-w-5xl px-4 py-8">
+          {activeSemester === null ? (
+            <NoActiveSemester />
+          ) : (
+            <ActiveSemesterContent semesterId={activeSemester.id} semesterName={activeSemester.name} />
+          )}
+        </div>
+      </main>
+      <Footer />
     </div>
   );
-};
+}
 
-export default Index;
+function NoActiveSemester() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+      <Calendar className="h-16 w-16 mb-4 opacity-30" />
+      <h2 className="text-xl font-semibold text-foreground mb-2">No Active Semester</h2>
+      <p className="text-sm">The admin hasn't activated a semester yet. Check back later.</p>
+    </div>
+  );
+}
+
+function ActiveSemesterContent({
+  semesterId,
+  semesterName,
+}: {
+  semesterId: string;
+  semesterName: string;
+}) {
+  const sheets = getExamSheetsBySemester(semesterId);
+
+  const mid1Sel = useSelectedCourses(semesterId, "mid1");
+  const mid2Sel = useSelectedCourses(semesterId, "mid2");
+  const finalSel = useSelectedCourses(semesterId, "final");
+
+  const selections: Record<ExamType, Set<string>> = {
+    mid1: mid1Sel.selected,
+    mid2: mid2Sel.selected,
+    final: finalSel.selected,
+  };
+
+  const totalSelected = mid1Sel.selected.size + mid2Sel.selected.size + finalSel.selected.size;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <h2 className="text-xl font-bold">{semesterName}</h2>
+        <Badge variant="outline" className="border-success/30 bg-success-bg text-success text-xs">
+          Active Semester
+        </Badge>
+      </div>
+
+      <Tabs defaultValue="schedules">
+        <TabsList>
+          <TabsTrigger value="schedules">
+            <BookOpen className="h-4 w-4 mr-1.5" />
+            Exam Schedules
+          </TabsTrigger>
+          <TabsTrigger value="timetable">
+            <Calendar className="h-4 w-4 mr-1.5" />
+            My Timetable
+            {totalSelected > 0 && (
+              <Badge variant="secondary" className="ml-1.5 text-xs px-1.5 py-0">
+                {totalSelected}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="schedules" className="mt-4">
+          <ExamScheduleSection sheets={sheets} semesterId={semesterId} />
+        </TabsContent>
+
+        <TabsContent value="timetable" className="mt-4">
+          <TimetableView
+            sheets={sheets}
+            selections={selections}
+            semesterName={semesterName}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
