@@ -38,7 +38,7 @@ export function subscribe(key: string, listener: Listener): () => void {
   return () => listeners.get(key)?.delete(listener);
 }
 
-function notify(key: string) {
+export function notify(key: string) {
   listeners.get(key)?.forEach((fn) => fn());
 }
 
