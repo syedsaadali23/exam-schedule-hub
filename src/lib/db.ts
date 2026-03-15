@@ -193,12 +193,12 @@ export async function upsertExamSheet(
   // Create new
   const { data, error } = await supabase
     .from("exam_sheets")
-    .insert({
+    .insert([{
       semester_id: semesterId,
       exam_type: examType,
       current_version: versionString,
-      courses: courses as unknown as Record<string, unknown>[],
-    })
+      courses: JSON.parse(JSON.stringify(courses)),
+    }])
     .select()
     .single();
 
