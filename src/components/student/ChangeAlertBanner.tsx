@@ -1,7 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Course } from "@/types/exam";
-import { getVersionHistory } from "@/lib/db";
 
 interface ChangeAlertBannerProps {
   examSheetId: string;
