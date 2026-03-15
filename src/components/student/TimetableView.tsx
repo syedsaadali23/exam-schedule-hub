@@ -241,35 +241,52 @@ function EntriesList({
 }
 
 function downloadPDF(entries: TimetableEntry[], examType: ExamType, semesterName: string) {
-  const doc = new jsPDF();
+  try {
+    const doc = new jsPDF();
 
-  // Header
-  doc.setFillColor(30, 41, 55);
-  doc.rect(0, 0, 210, 35, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  doc.text("ExamDesk", 14, 15);
-  doc.setFontSize(10);
-  doc.text(`${semesterName} — ${EXAM_TYPE_LABELS[examType]}`, 14, 23);
-  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
+    // Header
+    doc.setFillColor(30, 41, 55);
+    doc.rect(0, 0, 210, 35, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.text("ExamDesk", 14, 15);
+    doc.setFontSize(10);
+    doc.text(`${semesterName} — ${EXAM_TYPE_LABELS[examType]}`, 14, 23);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
 
-  doc.setTextColor(0, 0, 0);
+    doc.setTextColor(0, 0, 0);
 
-  autoTable(doc, {
-    startY: 42,
-    head: [["#", "Course Code", "Subject Name", "Date", "Day", "Time"]],
-    body: entries.map((e, i) => [i + 1, e.courseCode, e.courseName, e.date, e.day, e.timeSlot]),
-    styles: { fontSize: 9 },
-    headStyles: { fillColor: [30, 41, 55] },
-    alternateRowStyles: { fillColor: [245, 247, 250] },
-    didDrawPage: (data) => {
-      const pageCount = doc.getNumberOfPages();
-      doc.setFontSize(8);
-      doc.setTextColor(150);
-      doc.text(`Page ${data.pageNumber} of ${pageCount}`, 105, 290, { align: "center" });
-    },
-  });
+    autoTable(doc, {
+      startY: 42,
+      head: [["#", "Course Code", "Subject Name", "Date", "Day", "Time"]],
+      body: entries.map((e, i) => [i + 1, e.courseCode, e.courseName, e.date, e.day, e.timeSlot]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [30, 41, 55] },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      didDrawPage: (data) => {
+        const pageCount = doc.getNumberOfPages();
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`Page ${data.pageNumber} of ${pageCount}`, 105, 290, { align: "center" });
+      },
+    });
 
-  const fileName = `${semesterName}-${EXAM_TYPE_LABELS[examType]}`.replace(/\s+/g, "-");
-  doc.save(`${fileName}.pdf`);
+    const fileName = `${semesterName}-${EXAM_TYPE_LABELS[examType]}`.replace(/\s+/g, "-");
+    
+    // Use blob URL opened in new tab to bypass iframe download restrictions
+    const blob = doc.output("blob");
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${fileName}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Also open in new tab as fallback
+    window.open(url, "_blank");
+  } catch (error) {
+    console.error("PDF generation failed:", error);
+    alert("Failed to generate PDF. Please try again.");
+  }
 }
