@@ -1,10 +1,9 @@
 import { useState, useCallback, useRef, memo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Upload, FileSpreadsheet, Save } from "lucide-react";
 import { ExamType, Course, EXAM_TYPE_LABELS } from "@/types/exam";
-import { upsertExamSheet, getExamSheetByType } from "@/lib/store";
+import { useUpsertExamSheet, useExamSheetByType } from "@/hooks/use-db";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
@@ -63,10 +62,11 @@ export default function UploadSheetDialog({
   examType,
 }: UploadSheetDialogProps) {
   const [grid, setGrid] = useState<GridData>(createEmptyGrid);
-  const [saving, setSaving] = useState(false);
   const loadedRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const upsertSheet = useUpsertExamSheet();
+  const { data: existingSheet } = useExamSheetByType(semesterId, examType);
 
   // Pre-fill existing data
   useEffect(() => {
@@ -76,10 +76,9 @@ export default function UploadSheetDialog({
     }
     if (loadedRef.current) return;
     loadedRef.current = true;
-    const sheet = getExamSheetByType(semesterId, examType);
-    if (sheet && sheet.courses.length > 0) {
+    if (existingSheet && existingSheet.courses.length > 0) {
       const g = createEmptyGrid();
-      sheet.courses.forEach((c, i) => {
+      existingSheet.courses.forEach((c, i) => {
         if (i >= ROWS) return;
         g[i][0] = c.courseCode;
         g[i][1] = c.day;
@@ -91,7 +90,7 @@ export default function UploadSheetDialog({
     } else {
       setGrid(createEmptyGrid());
     }
-  }, [open, semesterId, examType]);
+  }, [open, existingSheet]);
 
   const handleCellChange = useCallback((r: number, c: number, val: string) => {
     setGrid((prev) => {
@@ -107,7 +106,7 @@ export default function UploadSheetDialog({
       const r = parseInt(target.dataset.r || "0");
       const c = parseInt(target.dataset.c || "0");
       const text = e.clipboardData.getData("text/plain");
-      if (!text.includes("\t") && !text.includes("\n")) return; // Let normal paste happen
+      if (!text.includes("\t") && !text.includes("\n")) return;
 
       e.preventDefault();
       const rows = text.split(/\r?\n/).filter((line) => line.trim());
@@ -164,7 +163,6 @@ export default function UploadSheetDialog({
           const sheet = workbook.Sheets[workbook.SheetNames[0]];
           const json = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 });
 
-          // Find header row
           const headerIdx = json.findIndex((row) => row.some((c) => c && String(c).trim()));
           if (headerIdx < 0) {
             toast({ title: "Error", description: "Empty file", variant: "destructive" });
@@ -186,7 +184,6 @@ export default function UploadSheetDialog({
             if (idx >= 0) colMap[field] = idx;
           });
 
-          // Fallback to positional
           const fields = ["courseCode", "day", "date", "timeSlot", "courseName"];
           if (Object.keys(colMap).length === 0) {
             fields.forEach((f, i) => {
@@ -223,7 +220,7 @@ export default function UploadSheetDialog({
     [toast]
   );
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     const courses: Course[] = [];
     grid.forEach((row) => {
       if (row.every((c) => !c.trim())) return;
@@ -241,13 +238,15 @@ export default function UploadSheetDialog({
       return;
     }
 
-    setSaving(true);
-    const version = format(new Date(), "MMM d, yyyy h:mm a");
-    upsertExamSheet(semesterId, examType, courses, version);
-    setSaving(false);
-    toast({ title: "Saved", description: `${courses.length} courses uploaded — version ${version}` });
-    onOpenChange(false);
-  }, [grid, semesterId, examType, toast, onOpenChange]);
+    try {
+      const version = format(new Date(), "MMM d, yyyy h:mm a");
+      await upsertSheet.mutateAsync({ semesterId, examType, courses, versionString: version });
+      toast({ title: "Saved", description: `${courses.length} courses uploaded — version ${version}` });
+      onOpenChange(false);
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  }, [grid, semesterId, examType, toast, onOpenChange, upsertSheet]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -307,9 +306,9 @@ export default function UploadSheetDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={upsertSheet.isPending}>
             <Save className="h-4 w-4 mr-1.5" />
-            {saving ? "Saving..." : "Save Schedule"}
+            {upsertSheet.isPending ? "Saving..." : "Save Schedule"}
           </Button>
         </div>
       </DialogContent>

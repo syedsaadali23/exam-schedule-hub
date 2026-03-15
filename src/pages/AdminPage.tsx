@@ -1,19 +1,19 @@
 import { useState } from "react";
-import { isAdminLoggedIn, setAdminLoggedIn } from "@/lib/store";
 import AdminLogin from "@/components/admin/AdminLogin";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import Header from "@/components/layout/Header";
 
 export default function AdminPage() {
-  const [loggedIn, setLoggedIn] = useState(isAdminLoggedIn());
+  const [loggedIn, setLoggedIn] = useState(
+    () => localStorage.getItem("examdesk_admin_auth") === "true"
+  );
 
   const handleLogin = () => {
-    setAdminLoggedIn(true);
     setLoggedIn(true);
   };
 
   const handleLogout = () => {
-    setAdminLoggedIn(false);
+    localStorage.removeItem("examdesk_admin_auth");
     setLoggedIn(false);
   };
 

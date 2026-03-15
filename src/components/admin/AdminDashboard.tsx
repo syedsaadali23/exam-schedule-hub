@@ -5,9 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExamType, EXAM_TYPES, EXAM_TYPE_LABELS, Semester } from "@/types/exam";
-import { getActiveSemester, getExamSheetsBySemester, removeExamSheet } from "@/lib/store";
-import { useDataRefresh } from "@/hooks/use-store-subscription";
+import { useActiveSemester, useExamSheets, useRemoveExamSheet } from "@/hooks/use-db";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 import UploadSheetDialog from "./UploadSheetDialog";
 import SemesterManager from "./SemesterManager";
 import SettingsPanel from "./SettingsPanel";
@@ -29,8 +29,7 @@ const examColors: Record<ExamType, { icon: string; bg: string }> = {
 };
 
 export default function AdminDashboard() {
-  useDataRefresh();
-  const activeSemester = getActiveSemester();
+  const { data: activeSemester, isLoading } = useActiveSemester();
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
@@ -43,8 +42,14 @@ export default function AdminDashboard() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4 space-y-6">
-          <ActiveSemesterBanner semester={activeSemester} />
-          {activeSemester && <SheetCards semester={activeSemester} />}
+          {isLoading ? (
+            <Skeleton className="h-12 w-full" />
+          ) : (
+            <>
+              <ActiveSemesterBanner semester={activeSemester ?? null} />
+              {activeSemester && <SheetCards semester={activeSemester} />}
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="semesters" className="mt-4">
@@ -76,15 +81,20 @@ function ActiveSemesterBanner({ semester }: { semester: Semester | null }) {
 }
 
 function SheetCards({ semester }: { semester: Semester }) {
-  const sheets = getExamSheetsBySemester(semester.id);
+  const { data: sheets = [] } = useExamSheets(semester.id);
+  const removeSheet = useRemoveExamSheet();
   const [uploadType, setUploadType] = useState<ExamType | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ExamType | null>(null);
   const { toast } = useToast();
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
-    removeExamSheet(semester.id, deleteTarget);
-    toast({ title: "Deleted", description: `${EXAM_TYPE_LABELS[deleteTarget]} schedule removed` });
+    try {
+      await removeSheet.mutateAsync({ semesterId: semester.id, examType: deleteTarget });
+      toast({ title: "Deleted", description: `${EXAM_TYPE_LABELS[deleteTarget]} schedule removed` });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
     setDeleteTarget(null);
   };
 
@@ -104,7 +114,7 @@ function SheetCards({ semester }: { semester: Semester }) {
                   </div>
                   {sheet ? (
                     <Badge variant="outline" className="border-success/30 bg-success-bg text-success text-xs">
-                      v{getExamSheetsBySemester(semester.id).filter((s) => s.examType === type).length > 0 ? "1" : "0"}
+                      Uploaded
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-muted-foreground text-xs">Not Uploaded</Badge>

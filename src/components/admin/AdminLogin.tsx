@@ -3,7 +3,7 @@ import { Lock, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { verifyAdminPassword } from "@/lib/store";
+import { verifyAdminPassword } from "@/lib/db";
 import { useToast } from "@/hooks/use-toast";
 
 interface AdminLoginProps {
@@ -16,11 +16,13 @@ export default function AdminLogin({ onSuccess }: AdminLoginProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      if (verifyAdminPassword(password)) {
+    try {
+      const valid = await verifyAdminPassword(password);
+      if (valid) {
+        localStorage.setItem("examdesk_admin_auth", "true");
         onSuccess();
       } else {
         toast({
@@ -29,8 +31,14 @@ export default function AdminLogin({ onSuccess }: AdminLoginProps) {
           variant: "destructive",
         });
       }
-      setLoading(false);
-    }, 300);
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
   };
 
   return (

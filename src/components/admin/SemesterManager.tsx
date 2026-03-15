@@ -3,6 +3,7 @@ import { Plus, Check, Circle, Trash2, Power, PowerOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
@@ -17,19 +18,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SemesterType, Semester } from "@/types/exam";
 import {
-  getSemesters,
-  createSemester,
-  setActiveSemester,
-  deactivateSemester,
-  removeSemester,
-} from "@/lib/store";
-import { useDataRefresh } from "@/hooks/use-store-subscription";
+  useSemesters,
+  useCreateSemester,
+  useSetActiveSemester,
+  useDeactivateSemester,
+  useRemoveSemester,
+} from "@/hooks/use-db";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function SemesterManager() {
-  useDataRefresh();
-  const semesters = getSemesters();
+  const { data: semesters = [], isLoading } = useSemesters();
+  const createSemester = useCreateSemester();
+  const setActive = useSetActiveSemester();
+  const deactivate = useDeactivateSemester();
+  const removeSem = useRemoveSemester();
   const { toast } = useToast();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -43,9 +46,9 @@ export default function SemesterManager() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 1 + i);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     try {
-      createSemester(semType, year);
+      await createSemester.mutateAsync({ semesterType: semType, year });
       toast({ title: "Created", description: `${semType} ${year} semester created` });
       setCreateOpen(false);
     } catch (e: any) {
@@ -53,24 +56,32 @@ export default function SemesterManager() {
     }
   };
 
-  const handleActivate = () => {
+  const handleActivate = async () => {
     if (!activateTarget) return;
-    setActiveSemester(activateTarget.id);
-    toast({ title: "Activated", description: `${activateTarget.name} is now active` });
+    try {
+      await setActive.mutateAsync(activateTarget.id);
+      toast({ title: "Activated", description: `${activateTarget.name} is now active` });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
     setActivateTarget(null);
   };
 
-  const handleDeactivate = () => {
+  const handleDeactivate = async () => {
     if (!deactivateTarget) return;
-    deactivateSemester(deactivateTarget.id);
-    toast({ title: "Deactivated", description: `${deactivateTarget.name} deactivated` });
+    try {
+      await deactivate.mutateAsync(deactivateTarget.id);
+      toast({ title: "Deactivated", description: `${deactivateTarget.name} deactivated` });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
     setDeactivateTarget(null);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      removeSemester(deleteTarget.id);
+      await removeSem.mutateAsync(deleteTarget.id);
       toast({ title: "Deleted", description: `${deleteTarget.name} removed` });
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -92,7 +103,12 @@ export default function SemesterManager() {
           </Button>
         </CardHeader>
         <CardContent>
-          {semesters.length === 0 ? (
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+            </div>
+          ) : semesters.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">No semesters yet. Create one to get started.</p>
           ) : (
             <div className="space-y-2">
@@ -177,7 +193,9 @@ export default function SemesterManager() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate}>Create</Button>
+            <Button onClick={handleCreate} disabled={createSemester.isPending}>
+              {createSemester.isPending ? "Creating..." : "Create"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

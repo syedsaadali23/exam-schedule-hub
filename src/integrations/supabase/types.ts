@@ -14,13 +14,137 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_settings: {
+        Row: {
+          id: string
+          password: string
+        }
+        Insert: {
+          id?: string
+          password?: string
+        }
+        Update: {
+          id?: string
+          password?: string
+        }
+        Relationships: []
+      }
+      exam_sheet_versions: {
+        Row: {
+          courses: Json
+          created_at: string
+          current_version: string
+          exam_sheet_id: string
+          exam_type: string
+          id: string
+          semester_id: string
+          uploaded_at: string
+        }
+        Insert: {
+          courses?: Json
+          created_at?: string
+          current_version: string
+          exam_sheet_id: string
+          exam_type: string
+          id?: string
+          semester_id: string
+          uploaded_at: string
+        }
+        Update: {
+          courses?: Json
+          created_at?: string
+          current_version?: string
+          exam_sheet_id?: string
+          exam_type?: string
+          id?: string
+          semester_id?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_sheet_versions_exam_sheet_id_fkey"
+            columns: ["exam_sheet_id"]
+            isOneToOne: false
+            referencedRelation: "exam_sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_sheets: {
+        Row: {
+          courses: Json
+          current_version: string
+          exam_type: string
+          id: string
+          semester_id: string
+          uploaded_at: string
+        }
+        Insert: {
+          courses?: Json
+          current_version: string
+          exam_type: string
+          id?: string
+          semester_id: string
+          uploaded_at?: string
+        }
+        Update: {
+          courses?: Json
+          current_version?: string
+          exam_type?: string
+          id?: string
+          semester_id?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_sheets_semester_id_fkey"
+            columns: ["semester_id"]
+            isOneToOne: false
+            referencedRelation: "semesters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      semesters: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          semester_type: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          semester_type: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          semester_type?: string
+          year?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_admin_password: {
+        Args: { current_pw: string; new_pw: string }
+        Returns: boolean
+      }
+      verify_admin_password: {
+        Args: { input_password: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
