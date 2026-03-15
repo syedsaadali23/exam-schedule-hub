@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { updateAdminPassword } from "@/lib/store";
+import { updateAdminPassword } from "@/lib/db";
 import { useToast } from "@/hooks/use-toast";
 
 export default function SettingsPanel() {
@@ -14,9 +14,10 @@ export default function SettingsPanel() {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPw.length < 6) {
       toast({ title: "Error", description: "New password must be at least 6 characters", variant: "destructive" });
@@ -26,14 +27,21 @@ export default function SettingsPanel() {
       toast({ title: "Error", description: "Passwords do not match", variant: "destructive" });
       return;
     }
-    if (updateAdminPassword(currentPw, newPw)) {
-      toast({ title: "Updated", description: "Admin password has been changed" });
-      setCurrentPw("");
-      setNewPw("");
-      setConfirmPw("");
-    } else {
-      toast({ title: "Error", description: "Current password is incorrect", variant: "destructive" });
+    setSaving(true);
+    try {
+      const success = await updateAdminPassword(currentPw, newPw);
+      if (success) {
+        toast({ title: "Updated", description: "Admin password has been changed" });
+        setCurrentPw("");
+        setNewPw("");
+        setConfirmPw("");
+      } else {
+        toast({ title: "Error", description: "Current password is incorrect", variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
     }
+    setSaving(false);
   };
 
   const PwField = ({
@@ -72,9 +80,9 @@ export default function SettingsPanel() {
           <PwField label="Current Password" value={currentPw} onChange={setCurrentPw} show={showCurrent} onToggle={() => setShowCurrent(!showCurrent)} />
           <PwField label="New Password" value={newPw} onChange={setNewPw} show={showNew} onToggle={() => setShowNew(!showNew)} />
           <PwField label="Confirm New Password" value={confirmPw} onChange={setConfirmPw} show={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />
-          <Button type="submit" disabled={!currentPw || !newPw || !confirmPw}>
+          <Button type="submit" disabled={!currentPw || !newPw || !confirmPw || saving}>
             <Save className="h-4 w-4 mr-1.5" />
-            Update Password
+            {saving ? "Updating..." : "Update Password"}
           </Button>
         </form>
       </CardContent>

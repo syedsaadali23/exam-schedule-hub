@@ -2,10 +2,9 @@ import { GraduationCap, Calendar, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExamType, EXAM_TYPES } from "@/types/exam";
-import { getActiveSemester, getExamSheetsBySemester } from "@/lib/store";
+import { ExamType } from "@/types/exam";
+import { useActiveSemester, useExamSheets } from "@/hooks/use-db";
 import { useSelectedCourses } from "@/hooks/use-selected-courses";
-import { useDataRefresh } from "@/hooks/use-store-subscription";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import ExamScheduleSection from "@/components/student/ExamScheduleSection";
@@ -13,8 +12,7 @@ import TimetableView from "@/components/student/TimetableView";
 import { motion } from "framer-motion";
 
 export default function Index() {
-  useDataRefresh();
-  const activeSemester = getActiveSemester();
+  const { data: activeSemester, isLoading } = useActiveSemester();
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -43,7 +41,12 @@ export default function Index() {
 
         {/* Content */}
         <div className="mx-auto max-w-5xl px-4 py-8">
-          {activeSemester === null ? (
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          ) : !activeSemester ? (
             <NoActiveSemester />
           ) : (
             <ActiveSemesterContent semesterId={activeSemester.id} semesterName={activeSemester.name} />
@@ -72,7 +75,7 @@ function ActiveSemesterContent({
   semesterId: string;
   semesterName: string;
 }) {
-  const sheets = getExamSheetsBySemester(semesterId);
+  const { data: sheets = [], isLoading } = useExamSheets(semesterId);
 
   const mid1Sel = useSelectedCourses(semesterId, "mid1");
   const mid2Sel = useSelectedCourses(semesterId, "mid2");
@@ -85,6 +88,15 @@ function ActiveSemesterContent({
   };
 
   const totalSelected = mid1Sel.selected.size + mid2Sel.selected.size + finalSel.selected.size;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
