@@ -29,7 +29,9 @@ export default function ChangeAlertBanner({
   currentCourses,
   onDismiss,
 }: ChangeAlertBannerProps) {
-  const versions = getVersionHistory(examSheetId);
+  // Version history is loaded async - for now show simple banner
+  // TODO: Could use a React Query hook for version history
+  const versions: any[] = [];
 
   if (!lastSeenVersion || selectedCodes.size === 0) {
     return (
