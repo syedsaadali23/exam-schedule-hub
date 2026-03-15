@@ -16,11 +16,13 @@ export default function AdminLogin({ onSuccess }: AdminLoginProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      if (verifyAdminPassword(password)) {
+    try {
+      const valid = await verifyAdminPassword(password);
+      if (valid) {
+        localStorage.setItem("examdesk_admin_auth", "true");
         onSuccess();
       } else {
         toast({
@@ -29,8 +31,14 @@ export default function AdminLogin({ onSuccess }: AdminLoginProps) {
           variant: "destructive",
         });
       }
-      setLoading(false);
-    }, 300);
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
   };
 
   return (
