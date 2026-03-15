@@ -157,20 +157,20 @@ export async function upsertExamSheet(
 
   if (existing) {
     // Archive old version
-    await supabase.from("exam_sheet_versions").insert({
+    await supabase.from("exam_sheet_versions").insert([{
       exam_sheet_id: existing.id,
       semester_id: existing.semesterId,
       exam_type: existing.examType,
       current_version: existing.currentVersion,
       uploaded_at: existing.uploadedAt,
-      courses: existing.courses as unknown as Record<string, unknown>[],
-    });
+      courses: JSON.parse(JSON.stringify(existing.courses)),
+    }]);
 
     // Update
     const { data, error } = await supabase
       .from("exam_sheets")
       .update({
-        courses: courses as unknown as Record<string, unknown>[],
+        courses: JSON.parse(JSON.stringify(courses)),
         current_version: versionString,
         uploaded_at: new Date().toISOString(),
       })
