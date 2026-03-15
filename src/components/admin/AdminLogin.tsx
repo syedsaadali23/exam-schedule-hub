@@ -3,7 +3,7 @@ import { Lock, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { verifyAdminPassword } from "@/lib/store";
+import { verifyAdminPassword } from "@/lib/db";
 import { useToast } from "@/hooks/use-toast";
 
 interface AdminLoginProps {
